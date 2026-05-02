@@ -11,6 +11,9 @@ license = { text = "MIT" }
 
 # Production dependencies — what's needed to run the code
 dependencies = [
+    # Environment
+    "python-dotenv>=1.0.0",
+
     # Core: warehouse + dbt
     "duckdb~=1.1.0",
     "dbt-core~=1.9.0",
@@ -25,6 +28,9 @@ dependencies = [
     
     # Modern ingestion
     "dlt[duckdb]>=1.4.0",
+
+    # External data sources
+    "kaggle>=1.6.0",
 ]
 
 [project.optional-dependencies]
@@ -53,7 +59,7 @@ observability = [
 
 # Optional: semantic layer
 semantic = [
-    "dbt-metricflow[duckdb]>=0.7.0",
+    "dbt-metricflow>=0.7.0",
 ]
 
 # Convenience: install everything
