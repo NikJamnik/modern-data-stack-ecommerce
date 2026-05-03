@@ -45,9 +45,9 @@ models:
       +materialized: table
       +schema: marts
 
-    # Elementary's tables go to a dedicated schema
-    elementary:
-      +schema: elementary
+  # Elementary's tables go to a dedicated schema
+  elementary:
+    +schema: elementary
 
 # ----------------------------------------------------------------------
 # Variables — accessible in models via {{ var('name') }}

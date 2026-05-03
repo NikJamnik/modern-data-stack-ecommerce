@@ -1,0 +1,47 @@
+version: 2
+
+models:
+  - name: stg_shopify__orders
+    description: |
+      Staged Shopify orders, one row per order.
+      Type-casted from raw VARCHAR to proper TIMESTAMP types.
+      No business logic applied — that lives in intermediate/marts.
+    
+    columns:
+      - name: order_id
+        description: "Unique order identifier"
+        tests:
+          - not_null
+          - unique
+      
+      - name: customer_id
+        description: |
+          Customer identifier per order. Note: in Olist data this is NOT 
+          a stable user ID — same person can have multiple customer_id values.
+          Use customer_unique_id from stg_shopify__customers for true identity.
+        tests:
+          - not_null
+      
+      - name: order_status
+        description: "Order lifecycle state"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["delivered", "shipped", "canceled", "unavailable", "invoiced", "processing", "created", "approved"]
+      
+      - name: order_purchase_timestamp
+        description: "Timestamp when the order was placed by customer"
+        tests:
+          - not_null
+      
+      - name: order_approved_at
+        description: "Timestamp when payment was approved (NULL for canceled before approval)"
+      
+      - name: order_delivered_carrier_date
+        description: "Timestamp when order handed to logistics carrier"
+      
+      - name: order_delivered_customer_date
+        description: "Timestamp when customer received the order"
+      
+      - name: order_estimated_delivery_date
+        description: "Estimated delivery date provided to customer at purchase"
