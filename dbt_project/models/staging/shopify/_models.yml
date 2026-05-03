@@ -1,6 +1,96 @@
 version: 2
 
 models:
+  - name: stg_shopify__order_items
+    description: |
+      Staged Shopify order line items.
+      Grain: one row per (order_id, order_item_id) — composite primary key.
+      Multiple items per order are common; order_item_id distinguishes them.
+    
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [order_id, order_item_id]
+    
+    columns:
+      - name: order_id
+        description: "FK to stg_shopify__orders"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_shopify__orders')
+              field: order_id
+      
+      - name: order_item_id
+        description: "Position within the order (1, 2, 3, ...)"
+        tests:
+          - not_null
+      
+      - name: product_id
+        description: "FK to products catalog"
+        tests:
+          - not_null
+      
+      - name: seller_id
+        description: "FK to seller (vendor on the marketplace)"
+        tests:
+          - not_null
+      
+      - name: shipping_limit_date
+        description: "Deadline by which seller must ship to carrier"
+      
+      - name: price
+        description: "Item price in BRL (Brazilian Real). Stored as DECIMAL(18,2) for exact arithmetic."
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 100000
+      
+      - name: freight_value
+        description: "Shipping cost in BRL. Zero means free shipping."
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 1000
+
+  - name: stg_shopify__customers
+    description: |
+      Staged Shopify customer-order sessions.
+      One row per (customer × order) session — NOT one row per real person.
+      Use customer_unique_id to identify real customers across sessions.
+    
+    columns:
+      - name: customer_id
+        description: "Unique session identifier (one per order)"
+        tests:
+          - not_null
+          - unique
+      
+      - name: customer_unique_id
+        description: |
+          Natural key for the real customer. Multiple customer_id rows
+          can share the same customer_unique_id — same person, different orders.
+        tests:
+          - not_null
+      
+      - name: customer_zip_code_prefix
+        description: "5-digit Brazilian zip code prefix (with leading zeros preserved)"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_value_lengths_to_equal:
+              value: 5
+      
+      - name: customer_city
+        description: "City name in lowercase Portuguese"
+      
+      - name: customer_state
+        description: "Two-letter Brazilian state code (e.g., SP, RJ, MG)"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_value_lengths_to_equal:
+              value: 2
+
   - name: stg_shopify__orders
     description: |
       Staged Shopify orders, one row per order.
