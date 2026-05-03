@@ -1,0 +1,58 @@
+# Main dbt project configuration.
+# Documentation: https://docs.getdbt.com/reference/dbt_project.yml
+
+name: 'mds_ecommerce'
+version: '0.1.0'
+config-version: 2
+
+# This profile name MUST match a profile in profiles.yml
+profile: 'mds_ecommerce'
+
+# ----------------------------------------------------------------------
+# Path configuration
+# ----------------------------------------------------------------------
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# ----------------------------------------------------------------------
+# Model configuration: defaults by folder
+# These cascade down — `staging` defaults apply to everything in models/staging/
+# ----------------------------------------------------------------------
+
+models:
+  mds_ecommerce:
+    # Staging: 1:1 with sources, light cleanup, materialized as views
+    staging:
+      +materialized: view
+      +schema: staging
+    
+    # Intermediate: business logic blocks, often ephemeral (CTE-only)
+    intermediate:
+      +materialized: ephemeral
+      +schema: intermediate
+    
+    # Marts: final analytical layer, materialized as tables
+    marts:
+      +materialized: table
+      +schema: marts
+
+    # Elementary's tables go to a dedicated schema
+    elementary:
+      +schema: elementary
+
+# ----------------------------------------------------------------------
+# Variables — accessible in models via {{ var('name') }}
+# ----------------------------------------------------------------------
+
+vars:
+  # Used by some models to filter or default time ranges
+  start_date: '2016-01-01'

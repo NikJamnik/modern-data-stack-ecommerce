@@ -1,0 +1,24 @@
+# dbt connection profile.
+# Maps each "target" (dev, prod, ci, ...) to a database connection.
+# 
+# IMPORTANT: paths are resolved relative to the directory where you RUN dbt,
+# NOT relative to this file. We use absolute paths via env_var to be safe.
+
+mds_ecommerce:
+  target: dev
+  outputs:
+    
+    # Local development: file-based DuckDB
+    dev:
+      type: duckdb
+      path: "{{ env_var('DBT_WAREHOUSE_PATH', '../data/warehouse.duckdb') }}"
+      threads: 4
+      extensions:
+        - httpfs    # for reading from S3/HTTPS if needed later
+        - parquet   # for parquet support
+    
+    # CI: ephemeral warehouse, smaller dataset
+    ci:
+      type: duckdb
+      path: "/tmp/ci_warehouse.duckdb"
+      threads: 2
