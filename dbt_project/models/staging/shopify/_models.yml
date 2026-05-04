@@ -1,6 +1,157 @@
 version: 2
 
 models:
+  - name: stg_shopify__payments
+    description: |
+      Staged payments
+      Grain: one row per pair (order_id, payment_sequential)
+    
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [order_id, payment_sequential]
+
+    columns:
+      - name: order_id
+        description: "Unique identifier of an order."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_shopify__orders')
+              field: order_id
+
+      - name: payment_sequential
+        description: |
+            A customer may pay an order with more than one payment method.
+            If he does so, a sequence will be created.
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1
+              max_value: 64
+
+      - name: payment_type
+        description: "Method of payment chosen by the customer."
+        tests:
+          - not_null
+          - accepted_values:
+              values: [credit_card, boleto, voucher, debit_card, not_defined]
+
+      - name: payment_installments
+        description: "Number of installments chosen by the customer."
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 64
+
+      - name: payment_value
+        description: "Transaction value."
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 50000
+
+  - name: stg_shopify__products
+    description: |
+      Staged Shopify products
+      Grain: one row per product
+
+    columns:
+      - name: product_id
+        description: "Primary key"
+        tests:
+          - not_null
+          - unique
+
+      - name: product_category_name
+        description: |
+          Original category name (Portuguese). FK to stg_shopify__product_categories.
+          NOTE: 13 products in source data have category names not present in 
+          the categories table. This is a known data quality issue tracked via 
+          relationships test with warn_if=">=10".
+
+        tests:
+          - relationships:
+              to: ref('stg_shopify__product_categories')
+              field: product_category_name
+              config:
+                severity: warn
+                warn_if: ">=10"
+                error_if: ">=100"
+
+      - name: product_name_length
+        description: "Number of characters extracted from the product name."
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 100
+              row_condition: "product_name_length is not null"
+
+      - name: product_description_length
+        description: "Number of characters extracted from the product description."
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 5000
+              row_condition: "product_description_length is not null"
+
+      - name: product_photos_qty
+        description: "Number of product published photos."
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 50
+              row_condition: "product_photos_qty is not null"
+
+      - name: product_weight_g
+        description: "Product weight measured in grams."
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 50000
+              row_condition: "product_weight_g is not null"
+
+      - name: product_length_cm
+        description: "Product length measured in centimeters."
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1
+              max_value: 200
+              row_condition: "product_length_cm is not null"
+
+      - name: product_height_cm
+        description: "Product height measured in centimeters."
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1
+              max_value: 200
+              row_condition: "product_height_cm is not null"
+
+      - name: product_width_cm
+        description: "Product width measured in centimeters."
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1
+              max_value: 200
+              row_condition: "product_width_cm is not null"
+
+  - name: stg_shopify__product_categories
+    description: |
+      Staged Shopify product categories.
+      Grain: one row per (product_category_name).
+    
+    columns:
+      - name: product_category_name
+        description: "Primary key"
+        tests:
+          - not_null
+      
+      - name: product_category_name_english
+        description: "Translation of product category to English"
+        tests:
+          - not_null
+
   - name: stg_shopify__order_items
     description: |
       Staged Shopify order line items.
