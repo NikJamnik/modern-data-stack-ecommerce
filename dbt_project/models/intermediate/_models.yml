@@ -1,0 +1,214 @@
+version: 2
+
+models:
+  - name: int_order_items__enriched
+    description: |
+      Shopify ordr line items enriched with product and category data.
+      Grain: one row per (order_id, order_item_id) — composite primary key.
+      Multiple items per order are common; order_item_id distinguishes them.
+    
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: [order_id, order_item_id]
+    
+    columns:
+      - name: order_id
+        description: "FK to stg_shopify__orders"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_shopify__orders')
+              field: order_id
+      
+      - name: order_item_id
+        description: "Position within the order (1, 2, 3, ...)"
+        tests:
+          - not_null
+      
+      - name: product_id
+        description: "FK to products catalog"
+        tests:
+          - not_null
+      
+      - name: seller_id
+        description: "FK to seller (vendor on the marketplace)"
+        tests:
+          - not_null
+      
+      - name: shipping_limit_date
+        description: "Deadline by which seller must ship to carrier"
+      
+      - name: price
+        description: "Item price in BRL (Brazilian Real). Stored as DECIMAL(18,2) for exact arithmetic."
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 100000
+      
+      - name: freight_value
+        description: "Shipping cost in BRL. Zero means free shipping."
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 1000
+
+      - name: product_category_name
+        description: |
+          Original category name (Portuguese). FK to stg_shopify__product_categories.
+          NOTE: 13 products in source data have category names not present in 
+          the categories table. This is a known data quality issue tracked via 
+          relationships test with warn_if=">=10".
+
+        tests:
+          - relationships:
+              to: ref('stg_shopify__product_categories')
+              field: product_category_name
+              config:
+                severity: warn
+                warn_if: ">=10"
+                error_if: ">=100"
+
+      - name: product_photos_qty
+        description: "Number of product published photos."
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 50
+              row_condition: "product_photos_qty is not null"
+
+      - name: product_weight_g
+        description: "Product weight measured in grams."
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 50000
+              row_condition: "product_weight_g is not null"
+
+      - name: product_length_cm
+        description: "Product length measured in centimeters."
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1
+              max_value: 200
+              row_condition: "product_length_cm is not null"
+
+      - name: product_height_cm
+        description: "Product height measured in centimeters."
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1
+              max_value: 200
+              row_condition: "product_height_cm is not null"
+
+      - name: product_width_cm
+        description: "Product width measured in centimeters."
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1
+              max_value: 200
+              row_condition: "product_width_cm is not null"
+
+      - name: product_category_name_english
+        description: "Translation of product category to English"
+
+
+  - name: int_customers__identity_resolved
+    description: |
+      Customer-level view: one row per real person (customer_unique_id).
+      Resolves Olist's session-based customer_id into stable identity.
+      Address fields use most recent order to reflect current location.
+    
+    columns:
+      - name: customer_unique_id
+        description: "Stable customer identifier across all their orders"
+        tests:
+          - not_null
+          - unique
+      
+      - name: customer_state
+        description: "Brazilian state code from customer's most recent order"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_value_lengths_to_equal:
+              value: 2
+      
+      - name: customer_city
+        description: "City from customer's most recent order"
+        tests:
+          - not_null
+      
+      - name: first_order_date
+        description: "Timestamp of first order (used for cohort assignment)"
+        tests:
+          - not_null
+      
+      - name: last_order_date
+        description: "Timestamp of most recent order (used for recency in RFM)"
+        tests:
+          - not_null
+      
+      - name: total_orders
+        description: "Distinct orders by this customer (used for frequency in RFM)"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1
+              max_value: 100
+      
+      - name: delivered_orders
+        description: "Orders that reached 'delivered' status"
+        tests:
+          - not_null
+      
+      - name: shipped_orders
+        description: "Orders currently in 'shipped' status (not yet delivered)"
+        tests:
+          - not_null
+      
+      - name: canceled_orders
+        description: "Orders that were canceled"
+        tests:
+          - not_null
+
+  - name: int_orders__with_payments
+    description: |
+      Orders enriched with aggregated payment information.
+      Grain: one row per order (same as stg_shopify__orders).
+      
+      Known data quality finding: 1 order is in 'delivered' status but has 
+      no payment records. Kept in this model — filtering decisions are 
+      made by downstream marts based on use-case.
+    
+    columns:
+      - name: order_id
+        description: "Unique order identifier"
+        tests:
+          - not_null
+          - unique
+      
+      - name: total_payment_amount
+        description: "Sum of all payment_value records for this order. Zero if no payments."
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 50000
+      
+      - name: total_installments
+        description: "Sum of installments across all payment records for this order."
+        tests:
+          - not_null
+      
+      - name: payment_methods_count
+        description: "Number of distinct payment_type values used (1 = single method, 2+ = mixed)."
+        tests:
+          - not_null
+      
+      - name: has_payment
+        description: "True if order has at least one payment record. Mostly true (>99%)."
+        tests:
+          - not_null
+          - accepted_values:
+              values: [true, false]
