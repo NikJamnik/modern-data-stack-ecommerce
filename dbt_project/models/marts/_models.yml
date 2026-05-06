@@ -1,6 +1,82 @@
 version: 2
 
 models:
+  - name: dim_products
+    description: |
+      Dimension table for products. Combines product identity and computed metrics.
+      Adds computed product segmentation for analytics.
+
+    columns:
+      - name: product_id
+        description: "Unique product identifier."
+        tests:
+          - not_null
+          - unique
+
+      - name: product_category_name
+        description: "Original category name (Portuguese)."
+
+      - name: product_category_name_english
+        description: "Translation of product category to English."
+
+      - name: product_weight_g
+        description: "Product weight measured in grams."
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 50000
+              row_condition: "product_weight_g is not null"
+
+      - name: times_ordered
+        description: "Number of times product appeared in a purchased orders"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 1000
+
+      - name: unique_buyers
+        description: "Number of unique clients who bought the product"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 1000
+
+      - name: total_revenue
+        description: "Sum of sold product prices"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 200000
+
+      - name: avg_price
+        description: "Average price of the product during the period when it was sold"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 20000
+
+      - name: first_sold_date
+        description: "Date when product was purchased for the first time"
+        tests:
+          - not_null
+
+      - name: last_sold_date
+        description: "Date when product was purchased for the last time (till current date)"
+        tests:
+          - not_null
+
+      - name: product_status
+        description: "Status of the product based on business segmentation"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["Top Seller", "Regular", "Slow Mover"]
+
+
   - name: fct_orders
     description: |
       Order-level fact table.
