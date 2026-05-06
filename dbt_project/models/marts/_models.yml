@@ -1,6 +1,81 @@
 version: 2
 
 models:
+  - name: fct_orders
+    description: |
+      Order-level fact table.
+      Grain: one row per order_id.
+      
+      Materialization: incremental with late-arriving fact strategy
+      (re-processes last 7 days on each non-full-refresh run).
+      
+      Denormalizes customer_segment, customer_state, customer_city for
+      self-service BI — analysts can group by these fields without joining
+      dim_customers.
+      
+      Known data finding: 775 orders have zero items (items_in_order=0).
+      Likely orders canceled before items were assigned, or data quality 
+      issue in source.
+    
+    columns:
+      - name: order_id
+        description: "Unique order identifier (primary key)"
+        tests:
+          - not_null
+          - unique
+      
+      - name: customer_unique_id
+        description: "FK to dim_customers"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_customers')
+              field: customer_unique_id
+      
+      - name: order_gmv
+        description: |
+          Gross Merchandise Value: sum(price + freight_value) of all items.
+          In BRL. Zero for orders with no items (775 known cases).
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 100000
+      
+      - name: items_in_order
+        description: "Number of line items in the order. Zero is possible (see model description)."
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 50
+      
+      - name: order_status
+        description: "Order lifecycle state (degenerate dimension)"
+        tests:
+          - not_null
+          - accepted_values:
+              values: [delivered, shipped, canceled, unavailable, invoiced, processing, created, approved]
+      
+      - name: order_purchase_timestamp
+        description: "When customer placed the order"
+        tests:
+          - not_null
+      
+      - name: customer_segment
+        description: "Denormalized from dim_customers for self-service BI"
+        tests:
+          - not_null
+          - accepted_values:
+              values: [Champion, "New Customer", "At Risk", "One-Time", Unknown]
+      
+      - name: customer_state
+        description: "Denormalized from dim_customers for self-service BI"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_value_lengths_to_equal:
+              value: 2
+
   - name: dim_customers
     description: |
       Customer dimension table for analytics.
