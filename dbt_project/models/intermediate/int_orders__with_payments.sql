@@ -13,6 +13,13 @@ payments as (
     select * from {{ ref('stg_shopify__payments') }}
 ),
 
+customers as (
+    select 
+        customer_id,
+        customer_unique_id
+    from {{ ref('stg_shopify__customers') }}
+),
+
 -- Aggregate payments to order grain
 payment_summary as (
     select
@@ -30,6 +37,8 @@ enriched as (
     select
         o.*,
 
+        c.customer_unique_id,
+
         -- Aggregated payment fields
         coalesce(p.total_payment_amount, 0) as total_payment_amount,
         coalesce(p.total_installments, 0) as total_installments,
@@ -42,6 +51,7 @@ enriched as (
         end as has_payment
     
     from orders o
+    left join customers c using (customer_id)
     left join payment_summary p using (order_id)
 )
 

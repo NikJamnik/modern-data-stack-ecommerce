@@ -1,0 +1,77 @@
+version: 2
+
+models:
+  - name: dim_customers
+    description: |
+      Customer dimension table for analytics.
+      One row per real customer (customer_unique_id).
+      
+      Combines identity, order metrics, revenue, and RFM-style segmentation.
+      
+      Key business finding: 96.9% of customers are One-Time — significant 
+      retention problem on the platform.
+    
+    columns:
+      - name: customer_unique_id
+        description: "Stable customer identifier (primary key)"
+        tests:
+          - not_null
+          - unique
+      
+      - name: customer_state
+        description: "Brazilian state from customer's most recent order"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_value_lengths_to_equal:
+              value: 2
+      
+      - name: customer_city
+        description: "City from customer's most recent order"
+        tests:
+          - not_null
+      
+      - name: total_orders
+        description: "Total number of orders by this customer"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 1
+              max_value: 100
+      
+      - name: total_gmv
+        description: |
+          Gross Merchandise Value: sum of (price + freight_value) across 
+          all items in all customer's orders. In BRL.
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 100000
+      
+      - name: avg_order_value
+        description: "GMV / total_orders. Defaults to 0 for customers with 0 orders."
+        tests:
+          - not_null
+      
+      - name: days_since_last_order
+        description: "Days between last order and analysis_as_of_date"
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_be_between:
+              min_value: 0
+              max_value: 1000
+      
+      - name: customer_segment
+        description: |
+          RFM-style segmentation: Champion, New Customer, At Risk, One-Time, Unknown.
+          Based on total_orders and days_since_last_order with 30-day cutoff.
+        tests:
+          - accepted_values:
+              values: ["Champion", "New Customer", "At Risk", "One-Time", "Unknown"]
+      
+      - name: analysis_as_of_date
+        description: |
+          Reference date used for recency calculation.
+          Same value for all rows in this snapshot. Helpful for debugging.
+        tests:
+          - not_null

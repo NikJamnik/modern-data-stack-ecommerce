@@ -190,6 +190,16 @@ models:
         tests:
           - not_null
           - unique
+
+      - name: customer_unique_id
+        description: |
+          Stable customer identifier (real person), brought in from stg_shopify__customers.
+          Critical for joining with dim_customers and customer-level analytics.
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_shopify__customers')
+              field: customer_unique_id
       
       - name: total_payment_amount
         description: "Sum of all payment_value records for this order. Zero if no payments."
