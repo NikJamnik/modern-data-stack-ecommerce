@@ -22,3 +22,14 @@ mds_ecommerce:
       type: duckdb
       path: "/tmp/ci_warehouse.duckdb"
       threads: 2
+
+# Elementary CLI profile — points at the same warehouse, reads the
+# main_elementary schema where the dbt package accumulated metadata.
+elementary:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('DBT_WAREHOUSE_PATH', '../data/warehouse.duckdb') }}"
+      threads: 4
+      schema: main_elementary

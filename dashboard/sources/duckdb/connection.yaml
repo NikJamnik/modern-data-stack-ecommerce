@@ -1,0 +1,4 @@
+name: warehouse
+type: duckdb
+options:
+  filename: ../../../data/warehouse.duckdb
