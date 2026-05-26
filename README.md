@@ -10,8 +10,8 @@ workflow: ingestion → transformation → testing → BI → data observability
 
 ## Live
 
-- **Dashboard:** _(Vercel URL — added after deploy)_
-- **Data quality report:** _(Elementary report — added after deploy)_
+- **Dashboard:** https://modern-data-stack-ecommerce.vercel.app
+- **Data quality report:** https://nikjamnik.github.io/modern-data-stack-ecommerce/elementary_report
 
 ## Architecture
 
