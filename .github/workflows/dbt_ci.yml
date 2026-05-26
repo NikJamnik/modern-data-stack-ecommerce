@@ -1,0 +1,41 @@
+name: dbt CI
+
+# Run on PRs into main, and on direct pushes to main
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  dbt-checks:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dbt_project   # monorepo: dbt lives in a subfolder
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Install dependencies
+        working-directory: .              # pyproject.toml is at repo root
+        run: uv sync
+
+      - name: dbt deps
+        run: uv run dbt deps
+
+      - name: dbt parse
+        run: uv run dbt parse --profiles-dir . --target ci
+
+      - name: dbt compile
+        run: uv run dbt compile --profiles-dir . --target ci
+        env:
+          # CI target uses an ephemeral DuckDB at /tmp (per profiles.yml)
+          DBT_WAREHOUSE_PATH: /tmp/ci_warehouse.duckdb
