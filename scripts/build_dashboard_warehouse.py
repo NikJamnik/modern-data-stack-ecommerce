@@ -21,14 +21,15 @@ if LITE.exists():
 # Connect to the destination (lightweight) file, attach the full warehouse read-only
 con = duckdb.connect(str(LITE))
 con.execute(f"attach '{FULL}' as full_wh (read_only)")
+con.execute("create schema if not exists main_marts")
 
 for table in MARTS:
     print(f"Copying main_marts.{table} ...")
     con.execute(
-        f"create table {table} as "
+        f"create table main_marts.{table} as "
         f"select * from full_wh.main_marts.{table}"
     )
-    n = con.sql(f"select count(*) from {table}").fetchone()[0]
+    n = con.sql(f"select count(*) from main_marts.{table}").fetchone()[0]
     print(f"  -> {n:,} rows")
 
 con.execute("detach full_wh")
