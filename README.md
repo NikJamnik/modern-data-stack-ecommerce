@@ -66,24 +66,51 @@ flowchart LR
 - **The product catalog has a long tail** — a small number of categories drive
   most revenue, typical of marketplaces.
 
+## Data Setup
+
+This project uses the [Olist Brazilian E-Commerce dataset](https://www.kaggle.com/olistbr/brazilian-ecommerce),
+downloaded programmatically via the Kaggle API.
+
+**1. Get Kaggle API credentials.** Log in to Kaggle →
+[Account settings](https://www.kaggle.com/settings/account) → **Create New Token**.
+This downloads a `kaggle.json` with your username and key.
+
+**2. Provide credentials.** Copy `.env.example` to `.env` and set your values
+(`.env` is gitignored and never committed):
+
+```bash
+cp .env.example .env
+# then edit .env and set KAGGLE_USERNAME and KAGGLE_KEY
+```
+
+**3. Download the data.** The script is idempotent — re-running it when files
+are already present is a no-op. CSVs are extracted into `data/raw/olist/`.
+
+```bash
+python ingestion/download_olist.py
+```
+
 ## How to Run
 
-Prerequisites: Python (with [`uv`](https://docs.astral.sh/uv/)), Node.js, and the
-Olist dataset CSVs placed under `data/raw/`.
+Prerequisites: Python (with [`uv`](https://docs.astral.sh/uv/)) and Node.js.
+Complete the **Data Setup** above first to download the dataset.
 
 ```bash
 # 1. Install Python dependencies
 uv sync
 
-# 2. Load raw CSVs into DuckDB
+# 2. Download the dataset (see Data Setup for credentials)
+python ingestion/download_olist.py
+
+# 3. Load raw CSVs into DuckDB
 python ingestion/load_to_duckdb.py
 
-# 3. Build and test the dbt project
+# 4. Build and test the dbt project
 cd dbt_project
 dbt deps
 dbt build --profiles-dir .
 
-# 4. Run the Evidence dashboard locally
+# 5. Run the Evidence dashboard locally
 cd ../dashboard
 npm install
 npm run sources
