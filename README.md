@@ -44,6 +44,8 @@ flowchart LR
 - **~180 data tests** — uniqueness, not-null, relationships, accepted values, value ranges
 - **Deterministic analytics** — recency calculated against a fixed "as-of date"
   (latest order in data), not `current_date()`, for reproducible results
+- **CI** — GitHub Actions runs `dbt deps`, `dbt parse`, and `dbt compile` on every
+  pull request and push (slim CI; full test run on sampled seeds is on the roadmap)
 
 ## Materialization Strategy
 
@@ -107,7 +109,7 @@ npm run dev          # http://localhost:3000
 
 - **Orchestration:** schedule ingestion + dbt + report generation via Airflow
   (the production pattern; intentionally out of scope for this portfolio build).
-- **CI/CD:** automated `dbt build` + `dbt test` on pull requests.
+- **Full-data CI:** run `dbt build` + `dbt test` on connected seed samples (currently compile-only).
 - **Additional sources:** synthetic payments/marketing data for multi-source modeling.
 
 ---
